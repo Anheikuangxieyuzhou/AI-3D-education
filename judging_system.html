@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Judging System Demo</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f2f5;
+            text-align: center;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #progressBar {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        #progressBar div {
+            height: 20px;
+            width: 0;
+            background-color: #4caf50;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+        #loading {
+            display: none;
+            font-size: 16px;
+            color: #555;
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #000;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #4caf50;
+            color: white;
+        }
+        td {
+            background-color: #f9f9f9;
+        }
+        p {
+            font-size: 16px;
+            color: #555;
+        }
+        .criteria-table {
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+        .criteria-table th {
+            background-color: #2196f3;
+        }
+        .criteria-table td {
+            background-color: #e3f2fd;
+        }
+        #radarChartContainer {
+            width: 60%;
+            height: 400px;
+            margin: 20px auto;
+        }
+        #radarChart {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #improvements {
+            font-size: 16px;
+            color: #555;
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Upload Your Video</h1>
+    <input type="file" id="videoFile" accept="video/*">
+    <button onclick="uploadVideo()">Submit</button>
+    <button onclick="location.href='criteria.html'">Grading Criteria</button>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Uploading your video, please wait...</p>
+    </div>
+    <div id="feedback"></div>
+
+    <!-- Move these divs below the feedback div -->
+    <div id="radarChartContainer">
+        <canvas id="radarChart"></canvas>
+    </div>
+    <div id="improvements"></div>
+
+    <script>
+        function getRandomScore() {
+            return Math.floor(Math.random() * 6) + 5; // Random score between 5 and 10
+        }
+
+        function uploadVideo() {
+            const videoFile = document.getElementById('videoFile').files[0];
+            if (!videoFile) {
+                alert('Please select a video file to upload.');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            const fileSize = videoFile.size;
+            const uploadTime = Math.min(10000, Math.max(3000, fileSize / 100)); // Simulate upload time based on file size
+
+            setTimeout(() => {
+                loading.style.display = 'none';
+                displayFeedback(videoFile.name);
+            }, uploadTime);
+        }
+
+        function displayFeedback(fileName) {
+            let data;
+            let summary;
+            if (fileName.startsWith('good')) {
+                data = {
+                    feedback: {
+                        Visual_composition: "Effective use of lenses, balanced character positioning, and vibrant colors enhance storytelling impact.",
+                        Scene_switching: "Seamless transitions maintain narrative flow and coherence between scenes.",
+                        Sound_design: "Clear, layered sound effects enhance immersion, effectively highlighting key plot moments.",
+                        Music_and_soundtrack: "Emotionally enhancing music complements the film's atmosphere, though some areas could be refined further.",
+                        Production_design: "Exquisite sets and detailed costumes support narrative depth and character understanding.",
+                        Emotional_resonance: "Genuine character emotions and a touching storyline evoke strong emotional connections with the audience."
+                    },
+                    score: {
+                        Visual_composition: 9,
+                        Scene_switching: 8,
+                        Sound_design: 9,
+                        Music_and_soundtrack: 8,
+                        Production_design: 8,
+                        Emotional_resonance: 9
+                    }
+                };
+                summary = {sum: "(51/60) The film excels in visual composition, sound design, and emotional resonance, with smooth scene transitions and detailed production design. While the music effectively enhances the film's emotional impact, further refinement could elevate its overall score. Overall, a compelling film that deeply resonates with its audience."}
+            } else if (fileName.startsWith('fair')) {
+                data = {
+                    feedback: {
+                        Visual_composition: "The lens selection is basically appropriate, but the composition needs to be improved, and the color and light and shadow effects are acceptable.",
+                        Scene_switching: "The scene switching is a bit stiff, and the narrative coherence is average.",
+                        Sound_design: "The sound quality is high and it works well with the picture, but the sound effects in some scenes are a bit thin.",
+                        Music_and_soundtrack: "The music can enhance the emotional atmosphere, but some clips are a bit repetitive.",
+                        Production_design: "The set and costume design are well designed and support the narrative of the film.",
+                        Emotional_resonance: "The emotional expression is relatively bland, and the emotional resonance evoked is limited."
+                    },
+                    score: {
+                        Visual_composition: 6,
+                        Scene_switching: 5,
+                        Sound_design: 7,
+                        Music_and_soundtrack: 6,
+                        Production_design: 8,
+                        Emotional_resonance: 5
+                    }
+                };
+                summary = {sum: "(37/60) The video has room for improvement in visual composition, scene switching and emotional resonance, and the sound effects and production design are good."}
+            } else {
+                data = {
+                    feedback: {
+                        Visual_composition: "Close-ups highlight key items but lack variety and background detail.",
+                        Scene_switching: "Smooth transitions but limited due to short duration.",
+                        Sound_design: "Average sound quality with mediocre coordination.",
+                        Music_and_soundtrack: "Music and soundtrack do not significantly enhance the atmosphere.",
+                        Production_design: "Simple sets and ordinary costumes lack detail and narrative support.",
+                        Emotional_resonance: "Short duration hinders emotional impact and resonance."
+                    },
+                    score: {
+                        Visual_composition: 6,
+                        Scene_switching: 6,
+                        Sound_design: 5,
+                        Music_and_soundtrack: 5,
+                        Production_design: 5,
+                        Emotional_resonance: 4
+                    }
+                };
+                summary = {sum: "(31/60) The video has average visual composition and scene switching, with mediocre sound design and soundtrack. Simple production design and limited emotional resonance indicate significant room for improvement."}
+            }
+
+            const feedbackDiv = document.getElementById('feedback');
+            feedbackDiv.innerHTML = `
+                <table>
+                    <tr>
+                        <th>Rating Items(评分项)</th>
+                        <th>Comments(评语)</th>
+                        <th>Score(得分)</th>
+                    </tr>
+                    <tr>
+                        <td>Visual composition(视觉构图)</td>
+                        <td>${data.feedback.Visual_composition}</td>
+                        <td>${data.score.Visual_composition}</td>
+                    </tr>
+                    <tr>
+                        <td>Scene switching(场景切换)</td>
+                        <td>${data.feedback.Scene_switching}</td>
+                        <td>${data.score.Scene_switching}</td>
+                    </tr>
+                    <tr>
+                        <td>Sound design(音效设计)</td>
+                        <td>${data.feedback.Sound_design}</td>
+                        <td>${data.score.Sound_design}</td>
+                    </tr>
+                    <tr>
+                        <td>Music and soundtrack(音乐与配乐)</td>
+                        <td>${data.feedback.Music_and_soundtrack}</td>
+                        <td>${data.score.Music_and_soundtrack}</td>
+                    </tr>
+                    <tr>
+                        <td>Production design(制作设计)</td>
+                        <td>${data.feedback.Production_design}</td>
+                        <td>${data.score.Production_design}</td>
+                    </tr>
+                    <tr>
+                        <td>Emotional resonance(情感共鸣)</td>
+                        <td>${data.feedback.Emotional_resonance}</td>
+                        <td>${data.score.Emotional_resonance}</td>
+                    </tr>
+                </table>
+                <p>${summary.sum}</p>
+            `;
+
+            scores = [
+                data.score.Visual_composition,
+                data.score.Scene_switching,
+                data.score.Sound_design,
+                data.score.Music_and_soundtrack,
+                data.score.Production_design,
+                data.score.Emotional_resonance
+            ];
+
+            displayRadarChart(scores);
+            displayImprovements(scores);
+
+        }
+
+        let radarChart; // 全局变量，保存 Chart.js 实例
+
+        function displayRadarChart(scores) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            if (radarChart) {
+                radarChart.destroy();
+            }
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'Visual composition(视觉构图)',
+                        'Scene switching(场景切换)',
+                        'Sound design(音效设计)',
+                        'Music and soundtrack(音乐与配乐)',
+                        'Production design(制作设计)',
+                        'Emotional resonance(情感共鸣)'
+                    ],
+                    datasets: [{
+                        label: '评分',
+                        data: scores,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 10
+                        }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutBounce'
+                    }
+                }
+            });
+        }
+
+        function displayImprovements(scores) {
+            const improvements = [];
+            const labels = [
+                'Visual composition(视觉构图)',
+                'Scene switching(场景切换)',
+                'Sound design(音效设计)',
+                'Music and soundtrack(音乐与配乐)',
+                'Production design(制作设计)',
+                'Emotional resonance(情感共鸣)'
+            ];
+
+            for (let i = 0; i < scores.length; i++) {
+                if (scores[i] < 6) {
+                    improvements.push(labels[i]);
+                }
+            }
+
+            const improvementsDiv = document.getElementById('improvements');
+            if (improvements.length > 0) {
+                improvementsDiv.innerHTML = `
+                    <h3>Areas that need improvement(需要提高的方面)</h3>
+                    <ul>
+                        ${improvements.map(item => `<li>${item}</li>`).join('')}
+                    </ul>
+                    <p>Thank you for submitting your video! Keep up the good work and we look forward to seeing more of your work.</p>
+                `;
+            } else {
+                improvementsDiv.innerHTML = `
+                    <h3>Well done!</h3>
+                    <p>Thank you for submitting your video! Keep up the good work and we look forward to seeing more of your work.</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
